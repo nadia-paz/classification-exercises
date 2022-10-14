@@ -43,7 +43,7 @@ def get_iris_data():
     with the species name and species id
     '''
     filename = 'iris.csv'
-    sql = 'SELECT * FROM species'
+    sql = 'SELECT * FROM measurements JOIN species USING (species_id)'
     url = get_db_url('iris_db')
 
     if os.path.isfile(filename):
@@ -59,16 +59,10 @@ def get_telco_data():
     '''
     filename = 'telco.csv'
     sql = '''
-    SELECT *
-    FROM customer_details
-    LEFT JOIN customer_churn USING (customer_id)
-    LEFT JOIN customer_contracts USING (customer_id)
-    LEFT JOIN customer_payments USING (customer_id)
-    LEFT JOIN customer_signups USING (customer_id)
-    LEFT JOIN customer_subscriptions USING (customer_id)
-    LEFT JOIN contract_types USING (contract_type_id)
-    LEFT JOIN internet_service_types USING (internet_service_type_id)
-    LEFT JOIN payment_types USING (payment_type_id)
+    SELECT * FROM customers
+    JOIN contract_types USING (contract_type_id)
+    JOIN internet_service_types USING (internet_service_type_id)
+    JOIN payment_types USING (payment_type_id)
     '''
     url = get_db_url('telco_churn')
 
