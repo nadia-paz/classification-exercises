@@ -36,12 +36,59 @@ def prep_titanic(df):
     # Drop duplicates
     df.drop_duplicates(inplace=True)
     # Drop columns 
-    columns_to_drop = ['embarked', 'pclass', 'age', 'passenger_id', 'deck']
+    columns_to_drop = ['embarked', 'pclass', 'passenger_id', 'deck']
     df = df.drop(columns = columns_to_drop)
-    # encoded categorical variables
-    dummy_df = pd.get_dummies(df[['sex', 'class', 'embark_town']], dummy_na=False, drop_first=[True, True])
-    df = pd.concat([df, dummy_df], axis=1)
+    
     return df
+
+def impute_age(train, validate, test):
+    '''
+    Imputes the mean age of train to all three datasets
+    '''
+    imputer = SimpleImputer(strategy='mean', missing_values=np.nan)
+    imputer = imputer.fit(train[['age']])
+    train[['age']] = imputer.transform(train[['age']])
+    validate[['age']] = imputer.transform(validate[['age']])
+    test[['age']] = imputer.transform(test[['age']])
+    return train, validate, test
+
+def impute_embark_town(train, validate, test):
+   
+    #df['embark_town'] = df.embark_town.fillna(value='Southampton')
+    #create an imputer with the strategy mode(most_frequent)
+    imputer = SimpleImputer(missing_values = np.nan, strategy='most_frequent')
+    #add the value
+    imputer = imputer.fit(train[['embark_town']])
+    
+    #fill the missing values with transform
+    train[['embark_town']] = imputer.transform(train[['embark_town']])
+    validate[['embark_town']] = imputer.transform(validate[['embark_town']])
+    test[['embark_town']] = imputer.transform(test[['embark_town']])
+    #df[['embark_town']] = imputer.transform(df[['embark_town']])
+    return train, validate, test
+
+def impute_titanic(train, validate, test):
+    '''
+    returns 3 d frames where missed values of age and embarked and creates dummies for each
+    '''
+    train, validate, test = impute_age(train, validate, test)
+    train, validate, test = impute_embark_town(train, validate, test)
+    return train, validate, test
+
+def titanic_dummies(train, validate, test):
+        # encoded categorical variables train set
+    dummy_df_train = pd.get_dummies(train[['sex', 'class', 'embark_town']], dummy_na=False, drop_first=[True, True])
+    train = pd.concat([train, dummy_df_train], axis=1)
+
+    # encoded categorical variables validate set
+    dummy_df_validate = pd.get_dummies(validate[['sex', 'class', 'embark_town']], dummy_na=False, drop_first=[True, True])
+    validate = pd.concat([validate, dummy_df_validate], axis=1)
+
+    # encoded categorical variables test set
+    dummy_df_test = pd.get_dummies(df[['sex', 'class', 'embark_town']], dummy_na=False, drop_first=[True, True])
+    test = pd.concat([test, dummy_df_test], axis=1)
+
+    return train, validate, test
 
 def prep_telco(df):
     df.drop_duplicates(inplace = True)
