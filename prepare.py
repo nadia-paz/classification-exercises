@@ -14,6 +14,22 @@ warnings.filterwarnings('ignore')
 # our own acquire script:
 import acquire as ac
 
+### SPLIT FUNCTION ###
+
+def split_db(df, target):
+    '''
+    splits DataFrame in 3 df's: train, validate, test
+    '''
+    train, test = train_test_split(df,
+                               train_size = 0.8,
+                               stratify = df[target])
+    train, validate = train_test_split(train,
+                                  train_size = 0.7,
+                                  stratify = train[target])
+    
+    return train, validate, test
+
+### IRIS DATA ###
 def prep_iris(df):
     '''
     accepts the untransformed iris data, and returns the data with the transformations above applied.
@@ -27,9 +43,11 @@ def prep_iris(df):
     dummies = pd.get_dummies(df['species'], dummy_na = False, drop_first = True)
     return pd.concat([df, dummies] , axis = 1)
 
+
+### TITANIC DATA ###
 def prep_titanic(df):
     '''
-    Takes in a titanic dataframe and returns a cleaned dataframe
+    Takes in a titanic dataframe and returns 3 data sets
     Arguments: df - a pandas dataframe with the expected feature names and columns
     Return: clean_df - a dataframe with the cleaning operations performed on it
     '''
@@ -38,8 +56,41 @@ def prep_titanic(df):
     # Drop columns 
     columns_to_drop = ['embarked', 'pclass', 'passenger_id', 'deck']
     df = df.drop(columns = columns_to_drop)
-    
+
     return df
+
+def prep_titanic_3(df):
+
+        # Drop duplicates
+    df.drop_duplicates(inplace=True)
+    # Drop columns 
+    columns_to_drop = ['embarked', 'pclass', 'passenger_id', 'deck']
+    df = df.drop(columns = columns_to_drop)
+
+    train, validate, test = split_db(df, 'survived')
+    
+    #impute missing values
+    train, validate, test = impute_titanic(train, validate, test)
+    
+    #create dummies
+    train, validate, test = titanic_dummies(train, validate, test)
+
+    return train, validate, test
+
+def prep_titanic_6(df):
+
+    X_train, X_validate, X_test = prep_titanic_3(df)
+
+    y_train = X_train.survived
+    y_validate = X_validate.survived
+    y_test = X_test.survived
+
+    X_train.drop(columns = ['survived', 'sex', 'class', 'embark_town'], inplace = True)
+    X_validate.drop(columns = ['survived', 'sex', 'class', 'embark_town'], inplace = True)
+    X_test.drop(columns = ['survived', 'sex', 'class', 'embark_town'], inplace = True)
+
+    return X_train, X_validate, X_test, y_train, y_validate, y_test
+
 
 def impute_age(train, validate, test):
     '''
@@ -85,16 +136,18 @@ def titanic_dummies(train, validate, test):
     validate = pd.concat([validate, dummy_df_validate], axis=1)
 
     # encoded categorical variables test set
-    dummy_df_test = pd.get_dummies(df[['sex', 'class', 'embark_town']], dummy_na=False, drop_first=[True, True])
+    dummy_df_test = pd.get_dummies(test[['sex', 'class', 'embark_town']], dummy_na=False, drop_first=[True, True])
     test = pd.concat([test, dummy_df_test], axis=1)
 
     return train, validate, test
 
-def prep_telco(df):
+### TELCO DATA ###
+
+def prep_telco_dummies(df):
     df.drop_duplicates(inplace = True)
     df.drop(
-    columns = ['customer_id', 'contract_type_id', 'internet_service_type_id', 'payment_type_id'], 
-    inplace = True)
+        columns = ['contract_type_id', 'internet_service_type_id', 'payment_type_id'], 
+        inplace = True)
     df.total_charges = df.total_charges.replace(' ', np.nan).astype(float)
     df = df.dropna()
     
@@ -117,15 +170,90 @@ def prep_telco(df):
     #concat and return
     return pd.concat([df, telco_dummies2, telco_dummies], axis = 1)
 
-def split_db(df, target):
+def prep_telco(df):
+    # Drop duplicates
+    df.drop_duplicates(inplace = True)
+    df.drop(columns=['payment_type_id', 'internet_service_type_id', 'contract_type_id', 'customer_id'], inplace=True)
+       
+    # Drop null values stored as whitespace    
+    df['total_charges'] = df['total_charges'].str.strip()
+    df = df[df.total_charges != '']
+    
+    # Convert to correct datatype
+    df['total_charges'] = df.total_charges.astype(float)
+
+    #convert objects to category
+    df.gender = df.loc[:, 'gender'].astype('category')
+    df.loc[:, 'partner':'dependents'] = df.loc[:, 'partner':'dependents'].astype('category')
+    df.loc[:, 'phone_service':'paperless_billing'] = \
+        df.loc[:, 'phone_service':'paperless_billing'].astype('category')
+    df.loc[:, 'churn':'payment_type'] = \
+        df.loc[:, 'churn':'payment_type'].astype('category')
+    df.loc[:, 'senior_citizen'] = df.loc[:, 'senior_citizen'].astype('uint8')
+
+    return df
+
+def prep_telco_data(df):
     '''
-    splits DataFrame in 3 df's: train, validate, test
+    creates dummies and splits into 3 data sets
+    drops not numerical columns (except 'churn') 
     '''
-    train, test = train_test_split(df,
-                               train_size = 0.8,
-                               stratify = df[target])
-    train, validate = train_test_split(train,
-                                  train_size = 0.7,
-                                  stratify = train[target])
+        # Drop duplicates
+    df.drop_duplicates(inplace = True)
+    df.drop(columns=['payment_type_id', 'internet_service_type_id', 'contract_type_id', 'customer_id'], inplace=True)
+       
+    # Drop null values stored as whitespace    
+    df['total_charges'] = df['total_charges'].str.strip()
+    df = df[df.total_charges != '']
+    
+    # Convert to correct datatype
+    df['total_charges'] = df.total_charges.astype(float)
+
+    #convert objects to category
+    df.gender = df.loc[:, 'gender'].astype('category')
+    df.loc[:, 'partner':'dependents'] = df.loc[:, 'partner':'dependents'].astype('category')
+    df.loc[:, 'phone_service':'paperless_billing'] = \
+        df.loc[:, 'phone_service':'paperless_billing'].astype('category')
+    df.loc[:, 'churn':'payment_type'] = \
+        df.loc[:, 'churn':'payment_type'].astype('category')
+    df.loc[:, 'senior_citizen'] = df.loc[:, 'senior_citizen'].astype('uint8')
+    
+    # Convert binary categorical variables to numeric
+    df['gender_encoded'] = df.gender.map({'Female': 1, 'Male': 0})
+    df['partner_encoded'] = df.partner.map({'Yes': 1, 'No': 0})
+    df['dependents_encoded'] = df.dependents.map({'Yes': 1, 'No': 0})
+    df['phone_service_encoded'] = df.phone_service.map({'Yes': 1, 'No': 0})
+    df['paperless_billing_encoded'] = df.paperless_billing.map({'Yes': 1, 'No': 0})
+    df['churn_encoded'] = df.churn.map({'Yes': 1, 'No': 0})
+
+    #change type to uint8
+    df.loc[:, 'gender_encoded':'churn_encoded'] = \
+        df.loc[:, 'gender_encoded':'churn_encoded'].astype('uint8')
+    
+    # Get dummies for non-binary categorical variables
+    dummy_df = pd.get_dummies(df[['multiple_lines', \
+                              'online_security', \
+                              'online_backup', \
+                              'device_protection', \
+                              'tech_support', \
+                              'streaming_tv', \
+                              'streaming_movies', \
+                              'contract_type', \
+                              'internet_service_type', \
+                              'payment_type']], dummy_na=False, \
+                              drop_first=True)
+    
+    # Concatenate dummy dataframe to original 
+    df = pd.concat([df, dummy_df], axis=1)
+
+    #drop unneeded columns
+    df.drop(columns = ['gender', 'partner', 'dependents', 'phone_service', \
+                    'multiple_lines', 'online_security', 'online_backup',\
+                   'device_protection', 'tech_support', 'streaming_tv', 'streaming_movies',\
+                   'paperless_billing', 'contract_type', 'internet_service_type', 'payment_type'],
+                   inplace = True)
+    
+    # split the data
+    train, validate, test = split_db(df, 'churn')
     
     return train, validate, test
