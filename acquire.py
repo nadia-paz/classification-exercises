@@ -1,7 +1,5 @@
 import os
-
 import pandas as pd
-
 from env import get_db_url
 
 '''
@@ -10,7 +8,7 @@ def new_titanic_data():
     return pd.read_sql('SELECT * FROM passengers', url)
 '''
 
-
+### TITANIC ###
 
 def get_titanic_data():
     '''
@@ -37,6 +35,8 @@ def get_titanic_data():
         # Return the dataframe to the calling code
         return df  
 
+### IRIS ###
+
 def get_iris_data():
     '''
     returns a DataFrame from iris_db
@@ -52,6 +52,8 @@ def get_iris_data():
         df = pd.read_sql(sql, url)
         df.to_csv(filename, index_label = False)
         return df
+
+### TELCO ### 
 
 def get_telco_data():
     '''

@@ -16,17 +16,56 @@ import acquire as ac
 
 ### SPLIT FUNCTION ###
 
-def split_db(df, target):
+def split_db(df, target, seed = 2912):
     '''
     splits DataFrame in 3 df's: train, validate, test
     '''
     train, test = train_test_split(df,
                                train_size = 0.8,
+                               random_state=seed,
                                stratify = df[target])
     train, validate = train_test_split(train,
                                   train_size = 0.7,
+                                  random_state=seed,
                                   stratify = train[target])
     
+    return train, validate, test
+
+def full_split(df, target):
+    '''
+    splits the data frame into:
+    X_train, X_validate, X_test, y_train, y_validate, y_test
+    '''
+    train, validate, test = split_db(df, target)
+
+    #save target column
+    y_train = train[target]
+    y_validate = validate[target]
+    y_test = test[target]
+
+    #remove target column from the sets
+    train.drop(columns = target, inplace=True)
+    validate.drop(columns = target, inplace=True)
+    test.drop(columns = target, inplace=True)
+
+    return train, validate, test, y_train, y_validate, y_test
+
+def train_validate_test_split(df, target, seed=123):
+    '''
+    This function takes in a dataframe, the name of the target variable
+    (for stratification purposes), and an integer for a setting a seed
+    and splits the data into train, validate and test. 
+    Test is 20% of the original dataset, validate is .30*.80= 24% of the 
+    original dataset, and train is .70*.80= 56% of the original dataset. 
+    The function returns, in this order, train, validate and test dataframes. 
+    '''
+    #split_db class verision with random seed
+    train_validate, test = train_test_split(df, test_size=0.2, 
+                                            random_state=seed, 
+                                            stratify=df[target])
+    train, validate = train_test_split(train_validate, test_size=0.3, 
+                                       random_state=seed,
+                                       stratify=train_validate[target])
     return train, validate, test
 
 ### IRIS DATA ###
@@ -47,7 +86,7 @@ def prep_iris(df):
 ### TITANIC DATA ###
 def prep_titanic(df):
     '''
-    Takes in a titanic dataframe and returns 3 data sets
+    Takes in a titanic dataframe and returns a cleaned df
     Arguments: df - a pandas dataframe with the expected feature names and columns
     Return: clean_df - a dataframe with the cleaning operations performed on it
     '''
@@ -60,15 +99,20 @@ def prep_titanic(df):
     return df
 
 def prep_titanic_3(df):
-
+    '''
+    Takes in a titanic dataframe and returns 3 data sets
+    Arguments: df - a pandas dataframe with the expected feature names and columns
+    Return: train, validate and test data sets
+    '''
         # Drop duplicates
     df.drop_duplicates(inplace=True)
     # Drop columns 
     columns_to_drop = ['embarked', 'pclass', 'passenger_id', 'deck']
     df = df.drop(columns = columns_to_drop)
 
-    train, validate, test = split_db(df, 'survived')
-    
+    #train, validate, test = split_db(df, 'survived')
+    #replace my function with another one to use a random seed
+    train, validate, test = train_validate_test_split(df, 'survived', seed=123)
     #impute missing values
     train, validate, test = impute_titanic(train, validate, test)
     
@@ -144,7 +188,7 @@ def titanic_dummies(train, validate, test):
 ### TELCO DATA ###
 
 def prep_telco_dummies(df):
-    df.drop_duplicates(inplace = True)
+    df.drop_duplicates(inplace=True)
     df.drop(
         columns = ['contract_type_id', 'internet_service_type_id', 'payment_type_id'], 
         inplace = True)
@@ -195,28 +239,10 @@ def prep_telco(df):
 
 def prep_telco_data(df):
     '''
-    creates dummies and splits into 3 data sets
+    creates dummies and
     drops not numerical columns (except 'churn') 
     '''
-        # Drop duplicates
-    df.drop_duplicates(inplace = True)
-    df.drop(columns=['payment_type_id', 'internet_service_type_id', 'contract_type_id', 'customer_id'], inplace=True)
-       
-    # Drop null values stored as whitespace    
-    df['total_charges'] = df['total_charges'].str.strip()
-    df = df[df.total_charges != '']
-    
-    # Convert to correct datatype
-    df['total_charges'] = df.total_charges.astype(float)
-
-    #convert objects to category
-    df.gender = df.loc[:, 'gender'].astype('category')
-    df.loc[:, 'partner':'dependents'] = df.loc[:, 'partner':'dependents'].astype('category')
-    df.loc[:, 'phone_service':'paperless_billing'] = \
-        df.loc[:, 'phone_service':'paperless_billing'].astype('category')
-    df.loc[:, 'churn':'payment_type'] = \
-        df.loc[:, 'churn':'payment_type'].astype('category')
-    df.loc[:, 'senior_citizen'] = df.loc[:, 'senior_citizen'].astype('uint8')
+    df = prep_telco(df)
     
     # Convert binary categorical variables to numeric
     df['gender_encoded'] = df.gender.map({'Female': 1, 'Male': 0})
@@ -254,6 +280,37 @@ def prep_telco_data(df):
                    inplace = True)
     
     # split the data
-    train, validate, test = split_db(df, 'churn')
-    
-    return train, validate, test
+    #train, validate, test = split_db(df, 'churn')
+    return df
+    #return train, validate, test
+
+def split_telco_3(df):
+    '''
+    splits telco in
+    train, validate, test data sets
+    '''
+    df = prep_telco_data(df)
+    return split_db(df, 'churn')
+
+def split_telco_6(df):
+    '''
+    splits telco if 
+    X_train, X_validate, X_test Data Frames and
+    y_train, y_validate, y_test Series
+    '''
+    df = prep_telco_data(df)
+    return full_split(df, 'churn')
+
+def split_telco(df, splits=6):
+    '''
+    by default splits in 
+    X_train, X_validate, X_test Data Frames 
+    y_train, y_validate, y_test Series
+
+    if you pass splits=3
+    splits in train, validate, test data sets
+    '''
+    if splits == 3:
+        return split_telco_3(df)
+    else:
+        return split_telco_6(df)
